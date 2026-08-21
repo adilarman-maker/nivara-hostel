@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NIVARA — My Stay</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body style="background:var(--sand);">
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">N</div><div class="word">Nivara</div></div>
+    <span class="role-pill">Tenant</span>
+    <div class="nav-group">
+      <div class="label">Menu</div>
+      <button class="nav-item active">🏠 &nbsp;My Stay</button>
+    </div>
+    <div class="sidebar-foot">
+      <div class="who" id="whoName">—</div>
+      <div class="sub">Tenant account</div>
+      <button class="btn ghost" style="padding:9px;" onclick="logout()">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="hero-card">
+      <div class="greeting">Welcome back, <span id="heroName">—</span> 🌿</div>
+      <div class="sub">Here's your current room assignment at Nivara.</div>
+      <div id="heroKeycard"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Stay details</h2></div>
+      <div class="info-grid" id="infoGrid"></div>
+    </div>
+
+    <div class="panel" id="paymentPanel" style="display:none;">
+      <div class="panel-head"><h2>Rent &amp; payments</h2></div>
+      <div id="paymentContent"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>My profile</h2></div>
+      <p style="font-size:0.85rem; color:#6b7a70; margin:-8px 0 16px;">These details are optional and only you (plus the hostel admins) can see or edit them.</p>
+      <form id="profileForm">
+        <div class="info-grid" style="margin-bottom:16px;">
+          <div class="field"><label>College</label><input id="pCollege" placeholder="e.g. IARE" /></div>
+          <div class="field"><label>From place</label><input id="pHometown" placeholder="e.g. Hyderabad" /></div>
+          <div class="field"><label>Parent's phone</label><input id="pParentPhone" class="mono" maxlength="10" placeholder="10-digit number" /></div>
+          <div class="field"><label>Age</label><input id="pAge" type="number" min="14" max="100" /></div>
+          <div class="field">
+            <label>Gender</label>
+            <select id="pGender" style="width:100%; padding:13px 14px; border-radius:8px; border:1.5px solid var(--line); background:var(--sand); font-family:inherit; font-size:1rem;">
+              <option value="">—</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn gold" style="width:auto; padding:12px 24px;" id="saveProfileBtn">Save profile</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Raise a complaint</h2></div>
+      <p style="font-size:0.85rem; color:#6b7a70; margin:-8px 0 14px;">Goes straight to the hostel admin, along with your room and contact details.</p>
+      <form id="complaintForm">
+        <div class="field">
+          <textarea id="complaintMessage" required rows="4" placeholder="Describe the issue…" style="width:100%; padding:13px 14px; border-radius:8px; border:1.5px solid var(--line); background:var(--sand); font-family:inherit; font-size:0.95rem; resize:vertical;"></textarea>
+        </div>
+        <button type="submit" class="btn gold" style="width:auto; padding:12px 24px;" id="submitComplaintBtn">Submit complaint</button>
+      </form>
+      <div id="complaintHistory" style="margin-top:20px;"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Need a change?</h2></div>
+      <p style="font-size:0.88rem; color:#5c6b60; margin:0;">
+        To update your phone number, switch rooms, or report an issue, contact your block's front desk or the hostel administrator —
+        only an admin can update UID / phone records for security.
+      </p>
+    </div>
+  </main>
+</div>
+
+<script src="/js/common.js"></script>
+<script>
+const session = guard('tenant');
+const t = session.user;
+document.getElementById('whoName').textContent = t.name;
+document.getElementById('heroName').textContent = t.name.split(' ')[0];
+document.getElementById('heroKeycard').innerHTML = renderKeycard(t.uid);
+
+const parsed = parseUidClient(t.uid);
+const meta = BLOCK_META[parsed.block];
+document.getElementById('infoGrid').innerHTML = `
+  <div class="info-item"><div class="l">Block</div><div class="v">${meta.name} — ${meta.type}</div></div>
+  <div class="info-item"><div class="l">Floor</div><div class="v">${parsed.floor}</div></div>
+  <div class="info-item"><div class="l">Room number</div><div class="v">${String(parsed.room).padStart(2,'0')}</div></div>
+  <div class="info-item"><div class="l">Bed</div><div class="v">${parsed.bed}</div></div>
+  <div class="info-item"><div class="l">Registered phone</div><div class="v mono">${t.phone}</div></div>
+  <div class="info-item"><div class="l">UID</div><div class="v mono">${t.uid}</div></div>
+`;
+
+// Load the tenant's own profile fields (may have changed since login)
+(async () => {
+  try {
+    const data = await api('/tenants/me');
+    const p = data.tenant;
+    document.getElementById('pCollege').value = p.college || '';
+    document.getElementById('pHometown').value = p.hometown || '';
+    document.getElementById('pParentPhone').value = p.parentPhone || '';
+    document.getElementById('pAge').value = p.age || '';
+    document.getElementById('pGender').value = p.gender || '';
+  } catch (e) { toast(e.message, 'err'); }
+})();
+
+// ---------- Rent & payments ----------
+async function loadPaymentPanel() {
+  const panel = document.getElementById('paymentPanel');
+  const content = document.getElementById('paymentContent');
+  try {
+    const [payData, configData] = await Promise.all([api('/payments/me'), api('/payments/config')]);
+    const due = payData.currentDue;
+    const config = configData.config;
+    panel.style.display = 'block';
+
+    let dueHtml = '';
+    if (due && due.status === 'due') {
+      const upiUri = config.upiId
+        ? `upi://pay?pa=${encodeURIComponent(config.upiId)}&pn=${encodeURIComponent(config.payeeName)}&am=${due.amount}&cu=INR&tn=${encodeURIComponent('Nivara rent ' + due.period)}`
+        : null;
+
+      dueHtml = `
+        <div style="background:#FFF7E6; border:1px solid #E4CE83; border-radius:12px; padding:16px; margin-bottom:18px;">
+          <div style="font-weight:700; color:#8A5A00; margin-bottom:4px;">Payment due for ${due.period}</div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--ink); margin-bottom:12px;">₹${due.amount.toLocaleString('en-IN')}</div>
+
+          ${config.razorpayEnabled ? `
+            <button class="btn gold" style="width:auto; padding:12px 22px; margin-bottom:10px;" id="razorpayPayBtn" onclick="payWithRazorpay('${due.id}')">
+              Pay now (Cards, UPI, Netbanking)
+            </button>
+            <p style="font-size:0.76rem; color:#8A5A00; margin:0 0 14px;">Secure checkout — your payment is confirmed automatically the moment it completes.</p>
+          ` : ''}
+
+          ${upiUri ? `
+            <details style="margin-bottom:10px;">
+              <summary style="cursor:pointer; font-size:0.85rem; color:${config.razorpayEnabled ? '#8a9690' : '#8A5A00'}; font-weight:600;">${config.razorpayEnabled ? 'Or pay by scanning a UPI QR code' : 'Pay by scanning a UPI QR code'}</summary>
+              <div style="margin-top:12px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}" alt="Payment QR code" style="border-radius:10px; border:1px solid var(--line); margin-bottom:12px;" />
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <a href="${upiUri}" class="btn ghost" style="width:auto; padding:11px 20px; text-decoration:none; display:inline-block;">Open in UPI app</a>
+                  <button class="btn ghost" style="width:auto; padding:11px 20px;" onclick="declarePaid('${due.id}')">I've completed this payment</button>
+                </div>
+                <p style="font-size:0.76rem; color:#8a9690; margin-top:8px;">This method needs the admin to manually confirm they received it.</p>
+              </div>
+            </details>
+          ` : (!config.razorpayEnabled ? `
+            <p style="font-size:0.85rem; color:#8A5A00; margin-bottom:12px;">The hostel hasn't set up online payment yet — please pay the office directly, then let them know.</p>
+            <button class="btn ghost" style="width:auto; padding:11px 20px;" onclick="declarePaid('${due.id}')">I've completed this payment</button>
+          ` : '')}
+        </div>`;
+    }
+
+    const historyHtml = payData.history.length ? `
+      <table>
+        <thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          ${payData.history.map((h) => `
+            <tr>
+              <td>${h.period}</td>
+              <td>₹${Number(h.amount).toLocaleString('en-IN')}</td>
+              <td>${h.status === 'paid' ? '✅ Paid' : '⏳ Due'}</td>
+              <td style="color:#8a9690; font-size:0.82rem;">${h.paidAt ? new Date(h.paidAt).toLocaleString() : '—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : `<p style="font-size:0.85rem; color:#6b7a70;">No payment history yet.</p>`;
+
+    content.innerHTML = dueHtml + historyHtml;
+  } catch (e) {
+    console.error(e);
+  }
+}
+window.declarePaid = async function (paymentId) {
+  if (!confirm("Confirm you've completed this payment? This lets the hostel admin know to check for it.")) return;
+  try {
+    await api(`/payments/${paymentId}/pay`, { method: 'POST' });
+    toast('Marked as paid — the admin has been notified', 'ok');
+    loadPaymentPanel();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+// Loads Razorpay's checkout script once, on demand (not on every page load —
+// no point pulling in a third-party script for tenants who never click Pay).
+let _razorpayScriptLoading = null;
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve();
+  if (_razorpayScriptLoading) return _razorpayScriptLoading;
+  _razorpayScriptLoading = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not load the payment page — check your connection and try again.'));
+    document.head.appendChild(script);
+  });
+  return _razorpayScriptLoading;
+}
+
+window.payWithRazorpay = async function (paymentId) {
+  const btn = document.getElementById('razorpayPayBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening secure checkout…'; }
+  try {
+    await loadRazorpayScript();
+    const order = await api(`/payments/${paymentId}/razorpay/order`, { method: 'POST' });
+
+    const rzp = new Razorpay({
+      key: order.keyId,
+      order_id: order.orderId,
+      amount: order.amount,
+      currency: order.currency,
+      name: order.payeeName,
+      description: 'Nivara Hostel payment',
+      prefill: { name: t.name, contact: t.phone },
+      theme: { color: '#C9A227' },
+      handler: async function (response) {
+        try {
+          await api(`/payments/${paymentId}/razorpay/verify`, {
+            method: 'POST',
+            body: {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            },
+          });
+          toast('Payment successful! ✓', 'ok');
+        } catch (e) {
+          // Verification failing here doesn't mean the payment failed — the
+          // webhook is the true source of truth and will confirm it shortly
+          // even if this immediate check has an issue.
+          toast('Payment received — confirming automatically, refresh in a moment.', 'ok');
+        }
+        loadPaymentPanel();
+      },
+      modal: {
+        ondismiss: function () {
+          if (btn) { btn.disabled = false; btn.textContent = 'Pay now (Cards, UPI, Netbanking)'; }
+        },
+      },
+    });
+    rzp.open();
+  } catch (e) {
+    toast(e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = 'Pay now (Cards, UPI, Netbanking)'; }
+  }
+};
+loadPaymentPanel();
+
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveProfileBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await api('/tenants/me', {
+      method: 'PUT',
+      body: {
+        college: document.getElementById('pCollege').value.trim(),
+        hometown: document.getElementById('pHometown').value.trim(),
+        parentPhone: document.getElementById('pParentPhone').value.trim(),
+        age: document.getElementById('pAge').value,
+        gender: document.getElementById('pGender').value,
+      },
+    });
+    toast('Profile updated', 'ok');
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save profile';
+  }
+});
+
+// ---------- Complaints ----------
+async function loadComplaintHistory() {
+  try {
+    const data = await api('/complaints/mine');
+    const holder = document.getElementById('complaintHistory');
+    if (!data.complaints.length) {
+      holder.innerHTML = `<p style="font-size:0.85rem; color:#8a9690;">No complaints raised yet.</p>`;
+      return;
+    }
+    holder.innerHTML = `
+      <div style="font-size:0.78rem; font-weight:600; color:#8a9690; margin-bottom:8px;">Your complaint history</div>
+      ${data.complaints.map((c) => `
+        <div style="background:#fff; border:1px solid var(--line); border-left:4px solid ${c.status === 'open' ? 'var(--coral)' : '#2E7D46'}; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:4px;">
+            <span style="font-size:0.76rem; color:#8a9690;">${new Date(c.createdAt).toLocaleString()}</span>
+            <span style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:${c.status === 'open' ? '#C1502E' : '#2E7D46'};">${c.status}</span>
+          </div>
+          <div style="font-size:0.88rem; white-space:pre-wrap;">${c.message.replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}</div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) { toast(e.message, 'err'); }
+}
+loadComplaintHistory();
+
+document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitComplaintBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    await api('/complaints', { method: 'POST', body: { message: document.getElementById('complaintMessage').value.trim() } });
+    toast('Complaint submitted — the admin has been notified', 'ok');
+    document.getElementById('complaintForm').reset();
+    loadComplaintHistory();
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit complaint';
+  }
+});
+</script>
+</body>
+</html>

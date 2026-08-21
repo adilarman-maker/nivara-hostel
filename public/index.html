@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NIVARA — Sign In</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="leaf-field"></div>
+<div class="login-shell">
+  <div class="login-panel">
+
+    <div class="brand">
+      <div class="mark">N</div>
+      <div class="word">Nivara<small>Hostel &amp; Stay Management</small></div>
+    </div>
+
+    <!-- STEP 1 : UID + phone (everyone) -->
+    <form id="step1" autocomplete="off">
+      <div class="error-banner" id="err1"></div>
+
+      <div class="field">
+        <label for="uid">Your 5-digit UID</label>
+        <input id="uid" inputmode="numeric" maxlength="5" placeholder="e.g. 10231" required />
+        <div class="hint">Block · Floor · Room · Bed — issued to you by the hostel office.</div>
+      </div>
+
+      <div class="field">
+        <label for="phone">Registered phone number</label>
+        <input id="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" required />
+      </div>
+
+      <button class="btn" type="submit" id="step1Btn">Continue</button>
+
+      <div class="divider-note">Tenants &amp; admins both start here — enter the <code>UID</code> and <code>phone</code> given to you.</div>
+    </form>
+
+    <!-- STEP 2 : admin password only (UID+phone from step 1 already identifies exactly who they are) -->
+    <form id="step2" autocomplete="off" style="display:none;">
+      <button type="button" class="back-link" id="backBtn">← Back</button>
+      <div class="error-banner" id="err2"></div>
+
+      <div class="field" style="margin-bottom:22px;">
+        <span class="hint" style="display:block;" id="gateVerifiedMsg">✓ Welcome back. Enter your password to continue.</span>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="••••••••" required />
+      </div>
+
+      <button class="btn gold" type="submit" id="step2Btn">Sign in to admin console</button>
+    </form>
+
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script>
+const uidEl = document.getElementById('uid');
+const phoneEl = document.getElementById('phone');
+uidEl.addEventListener('input', () => { uidEl.value = uidEl.value.replace(/\D/g,'').slice(0,5); });
+phoneEl.addEventListener('input', () => { phoneEl.value = phoneEl.value.replace(/\D/g,'').slice(0,10); });
+
+let gateUid = '', gatePhone = '';
+
+function showError(el, msg){ el.textContent = msg; el.classList.add('show'); }
+function clearError(el){ el.textContent=''; el.classList.remove('show'); }
+
+document.getElementById('step1').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('err1');
+  clearError(err);
+  const btn = document.getElementById('step1Btn');
+  btn.disabled = true; btn.textContent = 'Checking…';
+
+  try {
+    const uid = uidEl.value.trim();
+    const phone = phoneEl.value.trim();
+    const data = await api('/auth/check', { method: 'POST', auth:false, body: { uid, phone } });
+
+    if (data.mode === 'admin_verify') {
+      gateUid = uid; gatePhone = phone;
+      document.getElementById('step1').style.display = 'none';
+      document.getElementById('step2').style.display = 'block';
+      document.getElementById('gateVerifiedMsg').textContent = `✓ Welcome back, ${data.name}. Enter your password to continue.`;
+    } else if (data.mode === 'tenant') {
+      saveSession(data.token, { type: 'tenant', ...data.tenant });
+      window.location.href = '/tenant.html';
+    }
+  } catch (err2) {
+    showError(err, err2.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Continue';
+  }
+});
+
+document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+  clearError(document.getElementById('err2'));
+});
+
+document.getElementById('step2').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('err2');
+  clearError(err);
+  const btn = document.getElementById('step2Btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  try {
+    const password = document.getElementById('password').value;
+    const data = await api('/auth/admin-login', { method:'POST', auth:false, body: { uid: gateUid, phone: gatePhone, password } });
+    saveSession(data.token, { type: 'admin', ...data.admin });
+    window.location.href = '/admin.html';
+  } catch (err2) {
+    showError(err, err2.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in to admin console';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NIVARA — Admin Console</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body style="background:var(--sand);">
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">N</div><div class="word">Nivara</div></div>
+    <span class="role-pill" id="rolePill">—</span>
+
+    <div class="nav-group">
+      <div class="label">Manage</div>
+      <button class="nav-item active" data-tab="overview">▤ &nbsp;Overview</button>
+      <button class="nav-item" data-tab="rooms">🏢 &nbsp;Blocks &amp; Rooms</button>
+      <button class="nav-item" data-tab="payments">💳 &nbsp;Payments</button>
+      <button class="nav-item" data-tab="complaints">📮 &nbsp;Complaints</button>
+      <button class="nav-item" data-tab="tenants">🗝 &nbsp;All Tenants</button>
+    </div>
+
+    <div class="nav-group" id="superOnlyNav" style="display:none;">
+      <div class="label">Super Admin</div>
+      <button class="nav-item" data-tab="admins">👤 &nbsp;Admin Accounts</button>
+      <button class="nav-item" data-tab="audit">📜 &nbsp;Audit Log</button>
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="who" id="whoName">—</div>
+      <div class="sub" id="whoScope">—</div>
+      <button class="btn ghost" style="padding:9px;" onclick="logout()">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <section id="tab-overview">
+      <div class="page-head">
+        <div><h1>Overview</h1><p>A live snapshot of occupancy across your blocks.</p></div>
+      </div>
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card"><div class="skeleton" style="height:34px;width:60%;"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Recent activity</h2></div>
+        <div id="activityList"><div class="skeleton" style="height:60px;"></div></div>
+      </div>
+    </section>
+
+    <!-- ROOMS (block -> floor -> room -> bed browser) -->
+    <section id="tab-rooms" style="display:none;">
+      <div class="page-head">
+        <div><h1 id="roomsTitle">Blocks &amp; Rooms</h1><p id="roomsSubtitle">Pick a block, then a floor, then a bed to view or add a tenant.</p></div>
+      </div>
+      <div id="roomsBreadcrumb" class="breadcrumb" style="display:none;"></div>
+      <div id="roomsContent"></div>
+    </section>
+
+    <!-- PAYMENTS -->
+    <section id="tab-payments" style="display:none;">
+      <div class="page-head">
+        <div><h1>Payments</h1><p id="paymentsSubtitle">Dues and collections for your blocks.</p></div>
+        <select id="paymentsBlockFilter" style="display:none;"></select>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><span class="tag">Owed</span><div class="n" id="statTotalDue">—</div><div class="l">Total due right now (<span id="statPercentDue">—</span>%)</div></div>
+        <div class="stat-card"><span class="tag">Collected</span><div class="n" id="statTotalCollected">—</div><div class="l">Total collected (<span id="statPercentCollected">—</span>%)</div></div>
+        <div class="stat-card"><span class="tag">Tenants</span><div class="n" id="statDueCount">—</div><div class="l">Tenants with a due payment</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Outstanding dues</h2></div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Tenant</th><th>UID</th><th>Block</th><th>Period</th><th>Amount</th><th></th></tr></thead>
+            <tbody id="duesRows"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="duesEmpty" style="display:none;">
+          <div class="glyph">✅</div>
+          <h3>No dues right now</h3>
+          <p>Everyone in scope is paid up for the current month.</p>
+        </div>
+      </div>
+
+      <div class="panel" id="paymentSettingsPanel" style="display:none; max-width:520px;">
+        <div class="panel-head"><h2>Payment settings</h2></div>
+        <p class="sub" style="margin-top:-8px;">Tenants scan this UPI ID's QR to pay. Rent is chosen automatically from each room's number of beds.</p>
+        <form id="paymentConfigForm">
+          <div class="field"><label>UPI ID</label><input id="cfgUpiId" placeholder="yourname@bank" class="mono" /></div>
+          <div class="field"><label>Payee name (shown to tenants)</label><input id="cfgPayeeName" /></div>
+          <div class="field"><label>Advance amount (charged once, at move-in)</label><input id="cfgAdvance" type="number" min="0" /></div>
+          <div class="field">
+            <label>Monthly rent by sharing size</label>
+            <div class="info-grid" style="margin-top:6px;">
+              <div class="info-item"><label style="font-size:0.72rem;color:#8a9690;">1 person</label><input id="cfgRent1" type="number" min="0" /></div>
+              <div class="info-item"><label style="font-size:0.72rem;color:#8a9690;">2 people</label><input id="cfgRent2" type="number" min="0" /></div>
+              <div class="info-item"><label style="font-size:0.72rem;color:#8a9690;">3 people</label><input id="cfgRent3" type="number" min="0" /></div>
+              <div class="info-item"><label style="font-size:0.72rem;color:#8a9690;">4 people</label><input id="cfgRent4" type="number" min="0" /></div>
+              <div class="info-item"><label style="font-size:0.72rem;color:#8a9690;">5+ people</label><input id="cfgRent5" type="number" min="0" /></div>
+            </div>
+          </div>
+          <button type="submit" class="btn gold" style="width:auto; padding:12px 24px; margin-top:6px;">Save payment settings</button>
+        </form>
+      </div>
+
+      <div class="panel" id="razorpaySettingsPanel" style="display:none; max-width:520px;">
+        <div class="panel-head"><h2>Razorpay (automatic online payments)</h2></div>
+        <p class="sub" style="margin-top:-8px;" id="razorpayStatusLine">Checking status…</p>
+        <form id="razorpayConfigForm">
+          <div class="field"><label>Key ID</label><input id="cfgRzpKeyId" placeholder="rzp_test_xxxxxxxxxxxx" class="mono" /></div>
+          <div class="field"><label>Key Secret</label><input id="cfgRzpKeySecret" type="password" placeholder="leave blank to keep current" class="mono" /></div>
+          <div class="field"><label>Webhook Secret</label><input id="cfgRzpWebhookSecret" type="password" placeholder="leave blank to keep current" class="mono" /></div>
+          <div class="field">
+            <label>Webhook URL — paste this into Razorpay's dashboard</label>
+            <div style="display:flex; gap:8px;">
+              <input id="razorpayWebhookUrl" class="mono" readonly style="flex:1; background:var(--sand-dim);" />
+              <button type="button" class="icon-btn" onclick="copyWebhookUrl()">Copy</button>
+            </div>
+            <div class="hint">Razorpay → Settings → Webhooks → Add New Webhook. Event to select: <code>payment.captured</code>.</div>
+          </div>
+          <button type="submit" class="btn gold" style="width:auto; padding:12px 24px; margin-top:6px;">Save Razorpay settings</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- COMPLAINTS -->
+    <section id="tab-complaints" style="display:none;">
+      <div class="page-head">
+        <div><h1>Complaints</h1><p id="complaintsSubtitle">Issues raised by tenants.</p></div>
+      </div>
+      <div class="panel">
+        <div class="toolbar">
+          <select id="complaintsStatusFilter">
+            <option value="open">Open</option>
+            <option value="resolved">Resolved</option>
+            <option value="">All</option>
+          </select>
+        </div>
+        <div id="complaintsList"></div>
+        <div class="empty-state" id="complaintsEmpty" style="display:none;">
+          <div class="glyph">📮</div>
+          <h3>No complaints</h3>
+          <p>Nothing raised in this view yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TENANTS -->
+    <section id="tab-tenants" style="display:none;">
+      <div class="page-head">
+        <div><h1>Tenants &amp; UIDs</h1><p>Insert, update, or remove tenant UID/phone records for your assigned block(s).</p></div>
+        <button class="btn gold block" id="openAddTenant">+ Add tenant</button>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar">
+          <input type="text" id="searchInput" placeholder="Search name, UID or phone…" />
+          <select id="blockFilter"><option value="">All blocks</option></select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>UID</th><th>Tenant</th><th>Block</th><th>Phone</th><th>Updated</th><th></th></tr></thead>
+            <tbody id="tenantRows"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="tenantEmpty" style="display:none;">
+          <div class="glyph">🗝</div>
+          <h3>No tenants yet</h3>
+          <p>Add your first tenant to issue their UID + phone login.</p>
+        </div>
+        <div id="tenantPagination" style="display:flex; align-items:center; justify-content:space-between; margin-top:14px; font-size:0.82rem; color:#6b7a70;">
+          <span id="tenantPageInfo"></span>
+          <div style="display:flex; gap:8px;">
+            <button class="icon-btn" id="tenantPrevBtn">← Prev</button>
+            <button class="icon-btn" id="tenantNextBtn">Next →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GATE (super only) -->
+    <section id="tab-gate" style="display:none;"></section>
+
+    <!-- ADMINS (super only) -->
+    <section id="tab-admins" style="display:none;">
+      <div class="page-head"><div><h1>Admin Accounts</h1><p>Each of the 5 admins has their own login UID + phone number, plus a password. Edit any of them here.</p></div></div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Name</th><th>Login UID</th><th>Phone</th><th>Role</th><th>Block</th><th></th></tr></thead>
+          <tbody id="adminRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- AUDIT (super only) -->
+    <section id="tab-audit" style="display:none;">
+      <div class="page-head"><div><h1>Audit Log</h1><p>Every insert, update and delete across all blocks.</p></div></div>
+      <div class="panel"><div id="auditRows"></div></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Add floor modal -->
+<div class="modal-backdrop" id="floorModalBackdrop">
+  <div class="modal">
+    <h3>Add a floor</h3>
+    <div class="sub" id="floorModalSub"></div>
+    <form id="floorForm">
+      <div class="field">
+        <label>Floor number (0-9)</label>
+        <input id="floorNumber" type="number" min="0" max="9" required />
+        <div class="hint">Ground floor is usually 0, first floor 1, and so on.</div>
+      </div>
+      <div class="field">
+        <label>How many rooms on this floor?</label>
+        <input id="floorRoomCount" type="number" min="1" max="99" placeholder="e.g. 20" required />
+        <div class="hint">Creates rooms numbered 01 through this count, each starting with 1 bed. You can add more beds per room afterwards.</div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" id="floorCancel">Cancel</button>
+        <button type="submit" class="btn gold">Create floor</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Bed detail modal: shows either an occupied tenant's profile or a form to add a new tenant -->
+<div class="modal-backdrop" id="bedModalBackdrop">
+  <div class="modal" style="max-width:480px;">
+    <div id="bedModalContent"></div>
+  </div>
+</div>
+
+<!-- Tenant added successfully — send them their login details via WhatsApp -->
+<div class="modal-backdrop" id="waModalBackdrop">
+  <div class="modal" style="max-width:420px;">
+    <h3>Tenant added ✓</h3>
+    <div class="sub" id="waModalSub"></div>
+    <div id="waKeycardHolder" style="margin:14px 0;"></div>
+    <div style="background:var(--sand); border-radius:10px; padding:12px 14px; font-size:0.82rem; color:#5c6b60; margin-bottom:16px;">
+      Sends a WhatsApp message with their UID + phone (their login credentials) and a reminder to keep it private.
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn ghost" onclick="document.getElementById('waModalBackdrop').classList.remove('show')">Skip</button>
+      <a id="waSendLink" href="#" target="_blank" class="btn gold" style="width:auto; padding:12px 20px; text-decoration:none; display:inline-block; text-align:center;">Send via WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit tenant modal -->
+<div class="modal-backdrop" id="tenantModalBackdrop">
+  <div class="modal">
+    <h3 id="modalTitle">Add tenant</h3>
+    <div class="sub">UID format: <b>Block(1)</b>-<b>Floor(1)</b>-<b>Room(2)</b>-<b>Bed(1)</b></div>
+    <form id="tenantForm">
+      <input type="hidden" id="tenantId" />
+      <div class="field">
+        <label for="fUid">UID</label>
+        <input id="fUid" class="mono" maxlength="5" placeholder="e.g. 10231" required />
+        <div class="uid-preview" id="uidPreview" style="display:none;"></div>
+      </div>
+      <div class="field"><label for="fName">Full name</label><input id="fName" required /></div>
+      <div class="field"><label for="fPhone">Phone (10 digits)</label><input id="fPhone" class="mono" maxlength="10" required /></div>
+      <div class="field-row" style="display:flex; gap:12px;">
+        <div class="field" style="flex:1;"><label for="fAdvance">Advance amount (₹)</label><input id="fAdvance" type="number" min="1" required /></div>
+        <div class="field" style="flex:1;"><label for="fMonthlyRent">Monthly rent (₹)</label><input id="fMonthlyRent" type="number" min="1" required /></div>
+      </div>
+      <div class="field"><label for="fEmail">Email (optional)</label><input id="fEmail" type="email" /></div>
+      <div class="field-row" style="display:flex; gap:12px;">
+        <div class="field" style="flex:1;"><label for="fCollege">College (optional)</label><input id="fCollege" /></div>
+        <div class="field" style="flex:1;"><label for="fHometown">From place (optional)</label><input id="fHometown" /></div>
+      </div>
+      <div class="field-row" style="display:flex; gap:12px;">
+        <div class="field" style="flex:1;"><label for="fParentPhone">Parent's phone (optional)</label><input id="fParentPhone" class="mono" maxlength="10" /></div>
+        <div class="field" style="flex:0 0 90px;"><label for="fAge">Age</label><input id="fAge" type="number" min="14" max="100" /></div>
+        <div class="field" style="flex:1;">
+          <label for="fGender">Gender</label>
+          <select id="fGender" style="width:100%; padding:13px 14px; border-radius:8px; border:1.5px solid var(--line); background:var(--sand); font-family:inherit; font-size:1rem;">
+            <option value="">—</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label for="fNotes">Notes (optional)</label><input id="fNotes" placeholder="e.g. joining date, special instructions" /></div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" id="cancelModal">Cancel</button>
+        <button type="submit" class="btn gold" id="saveTenantBtn">Save tenant</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit admin login UID/phone modal -->
+<div class="modal-backdrop" id="credModalBackdrop">
+  <div class="modal">
+    <h3>Edit login UID &amp; phone</h3>
+    <div class="sub" id="credModalSub"></div>
+    <form id="credForm">
+      <input type="hidden" id="credAdminId" />
+      <div class="field">
+        <label>Login UID (5 digits, can't start with 1-4)</label>
+        <input id="credUid" class="mono" maxlength="5" required />
+      </div>
+      <div class="field"><label>Phone (10 digits)</label><input id="credPhone" class="mono" maxlength="10" required /></div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" id="credCancel">Cancel</button>
+        <button type="submit" class="btn gold">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset admin password modal -->
+<div class="modal-backdrop" id="pwModalBackdrop">
+  <div class="modal">
+    <h3>Reset password</h3>
+    <div class="sub" id="pwModalSub"></div>
+    <form id="pwForm">
+      <input type="hidden" id="pwAdminId" />
+      <div class="field"><label>New password (min 6 chars)</label><input id="pwNew" type="password" required minlength="6" /></div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" id="pwCancel">Cancel</button>
+        <button type="submit" class="btn gold">Update password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
+<script src="/js/rooms.js"></script>
+<script src="/js/payments.js"></script>
+<script src="/js/complaints.js"></script>
+</body>
+</html>
