@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hostel Info — Getnesty</title>
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  body{ display:block; background:var(--sand); min-height:100vh; }
+
+  .ie-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px; border-bottom:1px solid var(--line); background:var(--card-bg);
+    position:sticky; top:0; z-index:10;
+  }
+  .ie-topbar-left{ display:flex; align-items:center; gap:16px; }
+  .ie-back{ color:var(--pine); text-decoration:none; font-size:0.9rem; }
+  .ie-topbar h1{ font-family:var(--font-display); font-size:1.3rem; margin:0; font-weight:600; color:var(--pine); }
+  #editToggleWrap{ display:none; gap:10px; align-items:center; }
+
+  .ie-edit-banner{
+    display:none; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--gold-soft); padding:10px 28px; font-size:0.85rem; color:var(--ink);
+  }
+  .ie-edit-banner .msg{ font-weight:600; }
+  .ie-edit-banner-actions{ display:flex; gap:10px; }
+
+  .ie-layout{ display:flex; max-width:1180px; margin:0 auto; gap:32px; padding:32px 28px 100px; align-items:flex-start; }
+  #palette{
+    display:none; width:230px; flex-shrink:0; position:sticky; top:88px;
+    background:var(--card-bg); border:1px solid var(--line); border-radius:var(--radius); padding:18px;
+    max-height:calc(100vh - 110px); overflow-y:auto;
+  }
+  .ie-palette-title{ font-family:var(--font-display); font-weight:600; font-size:1rem; margin-bottom:14px; }
+  .ie-palette-group{ margin-bottom:16px; }
+  .ie-palette-group-label{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:#7a8a7f; margin-bottom:8px; }
+  .ie-palette-btn{
+    display:block; width:100%; text-align:left; padding:8px 10px; margin-bottom:4px;
+    background:var(--sand-dim); border:1px solid transparent; border-radius:8px;
+    font-family:var(--font-body); font-size:0.85rem; cursor:pointer; color:var(--ink);
+  }
+  .ie-palette-btn:hover{ border-color:var(--pine-soft); background:#fff; }
+
+  #infoDoc{ flex:1; min-width:0; max-width:760px; margin:0 auto; }
+  body.ie-editing #infoDoc{ margin:0; max-width:none; }
+
+  /* ---- view-mode block styles ---- */
+  .ie-heading{ font-family:var(--font-display); font-size:1.7rem; font-weight:600; color:var(--pine); margin:32px 0 12px; }
+  .ie-subheading{ font-family:var(--font-display); font-size:1.25rem; font-weight:600; color:var(--pine); margin:24px 0 8px; }
+  .ie-paragraph{ line-height:1.7; margin:0 0 16px; color:var(--ink); }
+  .ie-quote{ border-left:3px solid var(--gold); padding:6px 0 6px 18px; margin:16px 0; font-style:italic; color:var(--pine); }
+  .ie-quote cite{ display:block; margin-top:6px; font-style:normal; font-size:0.82rem; color:#7a8a7f; }
+  .ie-callout{ border-radius:10px; padding:14px 18px; margin:16px 0; line-height:1.6; font-size:0.94rem; }
+  .ie-callout-info{ background:#EAF1EC; color:var(--pine); border-left:4px solid var(--pine); }
+  .ie-callout-warning{ background:var(--gold-soft); color:#5c4a10; border-left:4px solid var(--gold); }
+  .ie-callout-success{ background:#E7F1E5; color:#2f5c2b; border-left:4px solid #5c8c6c; }
+  .ie-bullets, .ie-numbers, .ie-rules, .ie-checklist{ margin:0 0 16px; padding-left:22px; line-height:1.8; }
+  .ie-checklist{ list-style:none; padding-left:4px; }
+  .ie-rules{ padding-left:22px; }
+  .ie-dosdonts{ display:flex; gap:28px; margin:16px 0; flex-wrap:wrap; }
+  .ie-dosdonts > div{ flex:1; min-width:220px; }
+  .ie-do-col ul, .ie-dont-col ul{ list-style:none; padding:0; margin:0; line-height:1.9; }
+  .ie-do-col li{ color:#2f6b3f; }
+  .ie-dont-col li{ color:var(--coral); }
+  .ie-col-title{ font-weight:600; margin-bottom:6px; color:var(--pine); }
+  .ie-amenities{ display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+  .ie-chip{ background:var(--sand-dim); border-radius:99px; padding:6px 14px; font-size:0.85rem; }
+  .ie-table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:0.9rem; }
+  .ie-table th, .ie-table td{ text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  .ie-table th{ color:#7a8a7f; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em; }
+  .ie-faq{ border-bottom:1px solid var(--line); padding:12px 0; }
+  .ie-faq summary{ cursor:pointer; font-weight:600; color:var(--pine); }
+  .ie-faq p{ margin:8px 0 0; line-height:1.6; color:#4a544d; }
+  .ie-address, .ie-contact{ background:var(--sand-dim); border-radius:10px; padding:16px 20px; margin:16px 0; }
+  .ie-hostel-details{ background:var(--sand-dim); border-radius:10px; padding:18px 20px; margin:16px 0; }
+  .ie-hd-name{ font-family:var(--font-display); font-size:1.3rem; font-weight:600; color:var(--pine); margin-bottom:8px; }
+  .ie-hd-facts{ display:flex; gap:18px; flex-wrap:wrap; font-size:0.85rem; color:#4a544d; margin-bottom:8px; }
+  .ie-hd-facts strong{ color:var(--pine); }
+  .ie-hd-desc{ line-height:1.6; margin:8px 0 0; color:var(--ink); }
+  .ie-address-lines{ line-height:1.6; }
+  .ie-maplink{ display:inline-block; margin-top:8px; color:var(--pine); font-weight:600; font-size:0.88rem; }
+  .ie-contact-name{ font-family:var(--font-display); font-size:1.1rem; font-weight:600; color:var(--pine); }
+  .ie-contact-role{ font-size:0.85rem; color:#7a8a7f; margin-top:2px; }
+  .ie-contact-phone{ display:inline-block; margin-top:6px; color:var(--pine); }
+  .ie-contact-note{ margin-top:6px; font-size:0.88rem; color:#4a544d; }
+  .ie-figure{ margin:16px 0; }
+  .ie-figure img{ width:100%; border-radius:10px; display:block; }
+  .ie-figure figcaption{ font-size:0.82rem; color:#7a8a7f; margin-top:6px; text-align:center; }
+  .ie-video{ margin:16px 0; }
+  .ie-video iframe{ width:100%; aspect-ratio:16/9; border:none; border-radius:10px; }
+  .ie-video-caption{ font-size:0.82rem; color:#7a8a7f; margin-top:6px; }
+  .ie-two-col{ display:flex; gap:28px; margin:16px 0; flex-wrap:wrap; }
+  .ie-two-col > div{ flex:1; min-width:220px; line-height:1.6; }
+  .ie-divider{ border:none; border-top:1px solid var(--line); margin:28px 0; }
+  .ie-empty-hint{ color:#7a8a7f; font-size:0.88rem; }
+  .ie-empty-big{ text-align:center; padding:60px 20px; font-size:1rem; }
+
+  /* ---- edit-mode chrome ---- */
+  .ie-block-wrap{
+    background:var(--card-bg); border:1px solid var(--line); border-radius:10px;
+    margin-bottom:14px; padding:14px 16px; max-width:760px; margin-left:auto; margin-right:auto;
+  }
+  body.ie-editing #infoDoc{ display:block; }
+  .ie-block-wrap.dragging{ opacity:0.4; }
+  .ie-block-wrap.drag-over{ border-color:var(--gold); }
+  .ie-block-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .ie-drag-handle{ cursor:grab; color:#9aa79f; font-size:1.1rem; }
+  .ie-block-type-label{ font-size:0.78rem; color:#7a8a7f; text-transform:uppercase; letter-spacing:0.04em; }
+  .ie-toolbar-spacer{ flex:1; }
+  .ie-tbtn{ background:none; border:1px solid var(--line); border-radius:6px; padding:4px 9px; font-size:0.85rem; cursor:pointer; color:var(--pine); }
+  .ie-tbtn:hover{ background:var(--sand-dim); }
+  .ie-tbtn-danger{ color:var(--coral); border-color:rgba(193,80,46,0.35); }
+  .ie-tbtn-danger:hover{ background:rgba(193,80,46,0.08); }
+  .ie-block-editform textarea{ font-family:var(--font-body); resize:vertical; }
+  .ie-image-preview{ display:block; max-width:220px; margin-top:8px; border-radius:8px; }
+
+  @media (max-width: 860px){
+    .ie-layout{ flex-direction:column; }
+    #palette{ width:100%; position:static; order:2; }
+  }
+</style>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#1F3D2B" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+</head>
+<body>
+
+<div class="ie-topbar">
+  <div class="ie-topbar-left">
+    <a href="/admin.html" id="backLink" class="ie-back">← Back</a>
+    <h1>Hostel Info</h1>
+  </div>
+  <div id="editToggleWrap">
+    <button class="btn ghost" id="editBtn">Edit page</button>
+  </div>
+</div>
+
+<div class="ie-edit-banner" id="editModeBanner">
+  <span class="msg">Editing — changes save when you click Save</span>
+  <div class="ie-edit-banner-actions">
+    <button class="btn ghost" id="exitEditBtn">Done</button>
+    <button class="btn gold" id="saveBtn">Save</button>
+  </div>
+</div>
+
+<div class="ie-layout">
+  <div id="palette"></div>
+  <div id="infoDoc"></div>
+</div>
+
+<script src="/js/common.js"></script>
+<script src="/js/info.js"></script>
+</body>
+</html>

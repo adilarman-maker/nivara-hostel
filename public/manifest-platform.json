@@ -1,0 +1,16 @@
+{
+  "name": "Getnesty Registry — Platform Admin",
+  "short_name": "Getnesty Registry",
+  "description": "Create, suspend, or manage hostel organizations on the Getnesty platform.",
+  "start_url": "/platform.html",
+  "id": "/platform.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#14181A",
+  "theme_color": "#14181A",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
