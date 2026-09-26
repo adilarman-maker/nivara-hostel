@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Getnesty — Registry</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --ink:      #14181A;
+    --panel:    #1B2023;
+    --raised:   #23282B;
+    --paper:    #EDE7D8;
+    --paper-70: #A9AA9F;
+    --paper-45: #6E756F;
+    --brass:    #C9A227;
+    --brass-dim:#8E7A34;
+    --moss:     #6C9A78;
+    --brick:    #C05A3E;
+    --line:     rgba(237,231,216,0.09);
+    --line-strong: rgba(237,231,216,0.16);
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Work Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--ink); color:var(--paper);
+    font-family:var(--font-body); font-size:15px; line-height:1.5;
+    min-height:100vh;
+  }
+  a{ color:inherit; }
+  code, .mono{ font-family:var(--font-mono); letter-spacing:0.01em; }
+
+  ::selection{ background:var(--brass); color:var(--ink); }
+  :focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:0.8rem; color:var(--paper-70); margin-bottom:6px; }
+  .field input{
+    width:100%; padding:11px 13px; border-radius:6px;
+    border:1px solid var(--line-strong); background:var(--ink);
+    color:var(--paper); font-family:var(--font-body); font-size:0.95rem;
+  }
+  .field input:focus{ border-color:var(--brass); }
+  .field .hint{ font-size:0.78rem; color:var(--paper-45); margin-top:6px; line-height:1.4; }
+
+  .btn{
+    font-family:var(--font-body); font-weight:600; font-size:0.88rem;
+    padding:11px 20px; border-radius:6px; border:1px solid transparent;
+    cursor:pointer; transition:opacity 0.15s ease;
+  }
+  .btn:hover{ opacity:0.88; }
+  .btn:disabled{ opacity:0.5; cursor:default; }
+  .btn-primary{ background:var(--brass); color:#20210F; }
+  .btn-quiet{ background:transparent; color:var(--paper-70); border-color:var(--line-strong); }
+  .btn-quiet:hover{ color:var(--paper); border-color:var(--paper-45); opacity:1; }
+  .btn-danger{ background:transparent; color:var(--brick); border-color:var(--brick); }
+  .btn-danger:hover{ background:var(--brick); color:var(--paper); opacity:1; }
+  .btn-block{ width:100%; }
+
+  .error-banner{
+    display:none; background:rgba(192,90,62,0.12); border:1px solid rgba(192,90,62,0.4);
+    color:#E39C87; padding:11px 14px; border-radius:6px; font-size:0.85rem; margin-bottom:16px;
+  }
+  .error-banner.show{ display:block; }
+
+  #loginView{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .login-card{ width:100%; max-width:380px; }
+  .wordmark{ display:flex; align-items:baseline; gap:9px; margin-bottom:6px; }
+  .wordmark .mark{ font-family:var(--font-display); font-size:1.7rem; font-weight:600; color:var(--brass); }
+  .wordmark .sub{ font-size:0.8rem; color:var(--paper-45); }
+  .login-card h1{ font-family:var(--font-display); font-weight:500; font-size:1.55rem; margin:0 0 6px; color:var(--paper); }
+  .login-card p.lede{ color:var(--paper-45); font-size:0.88rem; margin:0 0 28px; line-height:1.5; }
+  .login-card form{ border-top:1px solid var(--line); padding-top:24px; }
+
+  #dashView{ max-width:980px; margin:0 auto; padding:56px 28px 80px; }
+  .top-bar{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:40px; flex-wrap:wrap; gap:20px; }
+  .top-bar .wordmark{ margin-bottom:14px; }
+  .top-bar h1{ font-family:var(--font-display); font-weight:500; font-size:1.9rem; margin:0; }
+  .top-bar .who{ color:var(--paper-45); font-size:0.85rem; margin-top:4px; }
+  .top-actions{ display:flex; gap:10px; }
+
+  .stats-strip{ display:flex; gap:0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-bottom:36px; }
+  .stat{ flex:1; padding:18px 22px; border-right:1px solid var(--line); transition:background 0.2s ease; }
+  .stat:last-child{ border-right:none; }
+  .stat:hover{ background:rgba(201,162,39,0.05); }
+  .stat .n{ font-family:var(--font-mono); font-size:1.7rem; color:var(--brass); font-weight:600; font-variant-numeric:tabular-nums; }
+  .stat .label{ font-size:0.8rem; color:var(--paper-45); margin-top:2px; }
+
+  .list-head{
+    display:flex; align-items:center; padding:0 0 10px; margin-bottom:2px;
+    font-size:0.74rem; color:var(--paper-45); text-transform:uppercase; letter-spacing:0.06em;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .col-name{ flex:2.6; }
+  .col-stat{ flex:0.9; text-align:right; }
+  .col-actions{ flex:2.4; text-align:right; }
+
+  .registry-row{ display:flex; align-items:center; padding:20px 0; border-bottom:1px solid var(--line); position:relative; transition:background 0.2s ease; }
+  .registry-row:hover{ background:rgba(237,231,216,0.025); }
+  .registry-row::before{ content:''; position:absolute; left:-14px; top:20px; bottom:20px; width:3px; border-radius:2px; }
+  .registry-row.is-active::before{ background:var(--moss); box-shadow:0 0 8px 0 rgba(108,154,120,0.6); }
+  .registry-row.is-inactive::before{ background:var(--brick); opacity:0.6; }
+
+  .col-name .hostel-name{ font-family:var(--font-display); font-size:1.15rem; color:var(--paper); }
+  .col-name .hostel-id{ font-size:0.8rem; color:var(--paper-45); margin-top:3px; }
+  .col-name .hostel-id .mono{ color:var(--paper-70); }
+  .status-tag{ font-size:0.76rem; margin-top:5px; }
+  .status-tag.active{ color:var(--moss); }
+  .status-tag.inactive{ color:var(--brick); }
+
+  .col-stat .n{ font-family:var(--font-mono); font-size:1rem; color:var(--paper); }
+
+  .row-actions{ display:flex; justify-content:flex-end; gap:18px; }
+  .row-actions button{
+    background:none; border:none; color:var(--paper-70); font-family:var(--font-body);
+    font-size:0.85rem; cursor:pointer; padding:4px 0; border-bottom:1px solid transparent;
+  }
+  .row-actions button:hover{ color:var(--brass); border-bottom-color:var(--brass); }
+  .row-actions button.danger:hover{ color:var(--brick); border-bottom-color:var(--brick); }
+
+  .empty-state{ padding:48px 0; text-align:center; color:var(--paper-45); font-size:0.9rem; }
+  .empty-state strong{ display:block; color:var(--paper); font-family:var(--font-display); font-size:1.2rem; font-weight:500; margin-bottom:8px; }
+
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(10,12,13,0.72); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-backdrop.show{ display:flex; }
+  .modal-card{
+    background:var(--raised); border:1px solid var(--line-strong); border-radius:10px;
+    padding:30px; width:100%; max-width:440px; max-height:88vh; overflow-y:auto;
+    animation:riseIn 0.16s ease-out;
+  }
+  @keyframes riseIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+  .modal-card h2{ font-family:var(--font-display); font-weight:500; font-size:1.35rem; margin:0 0 4px; }
+  .modal-card .modal-sub{ color:var(--paper-45); font-size:0.85rem; margin:0 0 22px; }
+  .modal-card hr{ border:none; border-top:1px solid var(--line); margin:20px 0; }
+  .modal-section-label{ font-size:0.78rem; color:var(--brass); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px; }
+  .modal-actions{ display:flex; gap:10px; margin-top:6px; }
+  .modal-card.danger{ border-top:3px solid var(--brick); }
+  .modal-card.danger h2{ color:var(--brick); }
+
+  @media (max-width: 640px){
+    .list-head{ display:none; }
+    .registry-row{ flex-direction:column; align-items:flex-start; gap:12px; }
+    .col-stat{ text-align:left; }
+    .row-actions{ justify-content:flex-start; }
+    .top-bar{ align-items:flex-start; }
+    .stats-strip{ flex-wrap:wrap; }
+    .stat{ flex:1 1 50%; border-bottom:1px solid var(--line); }
+    .stat:nth-child(2n){ border-right:none; }
+    .top-actions{ width:100%; }
+    .top-actions .btn{ flex:1; }
+    #dashView{ padding:52px 18px 60px; }
+    .modal-card{ padding:22px 18px; }
+    .modal-actions{ flex-direction:column-reverse; }
+    .modal-actions .btn{ width:100%; }
+  }
+
+  #installTopBtn{
+    display:none; position:fixed; top:14px; right:14px; z-index:60;
+    padding:8px 15px; font-size:0.78rem; border-radius:99px;
+  }
+</style>
+<link rel="manifest" href="/manifest-platform.json" />
+<meta name="theme-color" content="#14181A" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+</head>
+<body>
+
+<button id="installTopBtn" class="btn btn-primary" type="button">⬇ Install</button>
+
+<div id="loginView">
+  <div class="login-card">
+    <div class="wordmark"><span class="mark">Getnesty</span><span class="sub">Registry</span></div>
+    <h1>Platform sign-in</h1>
+    <p class="lede">This isn't a hostel login — it's where hostels themselves get created, suspended, or handed a new Super Admin.</p>
+    <form id="loginForm">
+      <div class="error-banner" id="loginErr"></div>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" required autocomplete="current-password" />
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="loginBtn">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<div id="dashView" style="display:none;">
+  <div class="top-bar">
+    <div>
+      <div class="wordmark"><span class="mark">Getnesty</span><span class="sub">Registry</span></div>
+      <h1>Hostels</h1>
+      <div class="who" id="whoami"></div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-primary" id="newHostelBtn">Add a hostel</button>
+      <button class="btn btn-quiet" id="logoutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="dashErr"></div>
+
+  <div class="stats-strip">
+    <div class="stat"><div class="n" id="stat-total">—</div><div class="label">Hostels</div></div>
+    <div class="stat"><div class="n" id="stat-active">—</div><div class="label">Active</div></div>
+    <div class="stat"><div class="n" id="stat-tenants">—</div><div class="label">Tenants, across all hostels</div></div>
+    <div class="stat"><div class="n" id="stat-blocks">—</div><div class="label">Blocks, across all hostels</div></div>
+  </div>
+
+  <div class="list-head">
+    <div class="col-name">Hostel</div>
+    <div class="col-stat">Tenants</div>
+    <div class="col-stat">Admins</div>
+    <div class="col-stat">Blocks</div>
+    <div class="col-actions"></div>
+  </div>
+  <div id="registryList"></div>
+  <div class="empty-state" id="emptyState" style="display:none;">
+    <strong>No hostels yet</strong>
+    Add the first one — it takes a name, a Hostel ID, and a Super Admin login.
+  </div>
+</div>
+
+<div class="modal-backdrop" id="newHostelModal">
+  <div class="modal-card">
+    <h2>Add a hostel</h2>
+    <p class="modal-sub">Creates the hostel and its first Super Admin together.</p>
+    <div class="error-banner" id="newHostelErr"></div>
+    <form id="newHostelForm">
+      <div class="field">
+        <label>Hostel name</label>
+        <input id="nh_name" required placeholder="e.g. Sunrise Hostel &amp; Stay" />
+      </div>
+      <div class="field">
+        <label>Hostel ID</label>
+        <input id="nh_slug" required placeholder="e.g. sunrise" autocapitalize="off" />
+        <div class="hint">Lowercase letters, numbers, and hyphens. This is what they'll type at login.</div>
+      </div>
+      <hr />
+      <div class="modal-section-label">Their first Super Admin</div>
+      <div class="field">
+        <label>Name</label>
+        <input id="nh_admin_name" required placeholder="e.g. Priya Sharma" />
+      </div>
+      <div class="field">
+        <label>UID</label>
+        <input id="nh_admin_uid" required maxlength="5" placeholder="00001" />
+        <div class="hint">5 digits, starting with 0.</div>
+      </div>
+      <div class="field">
+        <label>Phone</label>
+        <input id="nh_admin_phone" required maxlength="10" placeholder="10-digit mobile number" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input id="nh_admin_password" type="text" required placeholder="At least 6 characters" />
+        <div class="hint">Share this with them directly — there's no email or SMS delivery yet.</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-quiet" id="nh_cancel">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="nh_submit">Add hostel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="resetModal">
+  <div class="modal-card">
+    <h2>Reset Super Admin login</h2>
+    <p class="modal-sub" id="resetOrgLabel"></p>
+    <div class="error-banner" id="resetErr"></div>
+    <form id="resetForm">
+      <div class="field">
+        <label>New UID</label>
+        <input id="rs_uid" required maxlength="5" placeholder="00001" />
+        <div class="hint">5 digits, starting with 0.</div>
+      </div>
+      <div class="field">
+        <label>New phone</label>
+        <input id="rs_phone" required maxlength="10" placeholder="10-digit mobile number" />
+      </div>
+      <div class="field">
+        <label>New password</label>
+        <input id="rs_password" type="text" required placeholder="At least 6 characters" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-quiet" id="rs_cancel">Cancel</button>
+        <button class="btn btn-primary" type="submit">Reset credentials</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal-card danger">
+    <h2>Delete this hostel</h2>
+    <p class="modal-sub">Every tenant, room, payment, and message under it is removed permanently. There's no undo.</p>
+    <p style="font-size:0.9rem; margin-bottom:14px;">Type <strong id="del_org_name" class="mono"></strong> to confirm.</p>
+    <div class="error-banner" id="deleteErr"></div>
+    <form id="deleteForm">
+      <div class="field"><input id="del_confirm" required autocomplete="off" /></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-quiet" id="del_cancel">Cancel</button>
+        <button class="btn btn-danger" type="submit">Delete permanently</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const API = '/api/platform';
+let orgs = [];
+
+function token(){ return localStorage.getItem('platformToken'); }
+function setToken(t){ localStorage.setItem('platformToken', t); }
+function clearToken(){ localStorage.removeItem('platformToken'); }
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token()) headers['Authorization'] = 'Bearer ' + token();
+  const res = await fetch(API + path, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Something went wrong');
+  return data;
+}
+
+function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+function clearError(id) { const el = document.getElementById(id); el.textContent = ''; el.classList.remove('show'); }
+
+function showLogin() {
+  document.getElementById('loginView').style.display = 'flex';
+  document.getElementById('dashView').style.display = 'none';
+}
+
+async function showDashboard() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('dashView').style.display = 'block';
+  try {
+    const me = await api('/me');
+    document.getElementById('whoami').textContent = `Signed in as ${me.admin.name}`;
+    await loadOrgs();
+  } catch (e) {
+    clearToken();
+    showLogin();
+  }
+}
+
+async function loadOrgs() {
+  clearError('dashErr');
+  try {
+    const data = await api('/organizations');
+    orgs = data.organizations;
+    renderStats();
+    renderOrgs();
+  } catch (e) {
+    showError('dashErr', e.message);
+  }
+}
+
+function renderStats() {
+  countUpLocal(document.getElementById('stat-total'), orgs.length);
+  countUpLocal(document.getElementById('stat-active'), orgs.filter(o => o.active).length);
+  countUpLocal(document.getElementById('stat-tenants'), orgs.reduce((s, o) => s + o.activeTenants, 0));
+  countUpLocal(document.getElementById('stat-blocks'), orgs.reduce((s, o) => s + o.blockCount, 0));
+}
+
+// Tiny local copy of the count-up tween used across the hostel-facing app
+// (see common.js) — kept self-contained here since this page intentionally
+// ships no shared /js files.
+function countUpLocal(el, target) {
+  if (!el) return;
+  target = Number(target) || 0;
+  const runId = (el._countUpRun = (el._countUpRun || 0) + 1);
+  const currentText = (el.textContent || '').replace(/[^0-9.-]/g, '');
+  const start = currentText ? parseFloat(currentText) : 0; // continue from current value, not zero — see countUpEl in common.js
+  const t0 = performance.now();
+  const duration = 650;
+  function frame(now) {
+    if (el._countUpRun !== runId) return;
+    const p = Math.min(1, (now - t0) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * eased).toLocaleString('en-IN');
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function renderOrgs() {
+  const list = document.getElementById('registryList');
+  list.innerHTML = '';
+  document.getElementById('emptyState').style.display = orgs.length === 0 ? 'block' : 'none';
+
+  orgs.forEach((o) => {
+    const row = document.createElement('div');
+    row.className = `registry-row ${o.active ? 'is-active' : 'is-inactive'}`;
+    row.innerHTML = `
+      <div class="col-name">
+        <div class="hostel-name">${o.name}</div>
+        <div class="hostel-id">Hostel ID <span class="mono">${o.slug}</span></div>
+        <div class="status-tag ${o.active ? 'active' : 'inactive'}">${o.active ? 'Active' : 'Deactivated'}</div>
+      </div>
+      <div class="col-stat"><div class="n">${o.activeTenants}</div></div>
+      <div class="col-stat"><div class="n">${o.adminCount}</div></div>
+      <div class="col-stat"><div class="n">${o.blockCount}</div></div>
+      <div class="col-actions">
+        <div class="row-actions">
+          <button class="toggle-btn" data-id="${o.id}" data-active="${o.active}">${o.active ? 'Deactivate' : 'Reactivate'}</button>
+          <button class="reset-btn" data-id="${o.id}" data-name="${o.name}">Reset login</button>
+          <button class="danger delete-btn" data-id="${o.id}" data-name="${o.name}">Delete</button>
+        </div>
+      </div>`;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('.toggle-btn').forEach((btn) => btn.addEventListener('click', async () => {
+    const id = btn.dataset.id;
+    const nextActive = btn.dataset.active !== 'true';
+    try {
+      await api(`/organizations/${id}/active`, { method: 'PATCH', body: { active: nextActive } });
+      await loadOrgs();
+    } catch (e) { showError('dashErr', e.message); }
+  }));
+
+  list.querySelectorAll('.reset-btn').forEach((btn) => btn.addEventListener('click', () => openResetModal(btn.dataset.id, btn.dataset.name)));
+  list.querySelectorAll('.delete-btn').forEach((btn) => btn.addEventListener('click', () => openDeleteModal(btn.dataset.id, btn.dataset.name)));
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError('loginErr');
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const data = await api('/login', { method: 'POST', body: {
+      username: document.getElementById('username').value.trim(),
+      password: document.getElementById('password').value,
+    }});
+    setToken(data.token);
+    await showDashboard();
+  } catch (e2) {
+    showError('loginErr', e2.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => { clearToken(); showLogin(); });
+
+const newHostelModal = document.getElementById('newHostelModal');
+document.getElementById('newHostelBtn').addEventListener('click', () => { clearError('newHostelErr'); document.getElementById('newHostelForm').reset(); newHostelModal.classList.add('show'); });
+document.getElementById('nh_cancel').addEventListener('click', () => newHostelModal.classList.remove('show'));
+
+document.getElementById('newHostelForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError('newHostelErr');
+  const btn = document.getElementById('nh_submit');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    await api('/organizations', { method: 'POST', body: {
+      name: document.getElementById('nh_name').value,
+      slug: document.getElementById('nh_slug').value,
+      superAdminName: document.getElementById('nh_admin_name').value,
+      superAdminUid: document.getElementById('nh_admin_uid').value,
+      superAdminPhone: document.getElementById('nh_admin_phone').value,
+      superAdminPassword: document.getElementById('nh_admin_password').value,
+    }});
+    newHostelModal.classList.remove('show');
+    await loadOrgs();
+  } catch (e2) {
+    showError('newHostelErr', e2.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Add hostel';
+  }
+});
+
+const resetModal = document.getElementById('resetModal');
+let resetOrgId = null;
+function openResetModal(id, name) {
+  resetOrgId = id;
+  clearError('resetErr');
+  document.getElementById('resetForm').reset();
+  document.getElementById('resetOrgLabel').textContent = name;
+  resetModal.classList.add('show');
+}
+document.getElementById('rs_cancel').addEventListener('click', () => resetModal.classList.remove('show'));
+document.getElementById('resetForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError('resetErr');
+  try {
+    await api(`/organizations/${resetOrgId}/reset-super-admin`, { method: 'POST', body: {
+      uid: document.getElementById('rs_uid').value,
+      phone: document.getElementById('rs_phone').value,
+      password: document.getElementById('rs_password').value,
+    }});
+    resetModal.classList.remove('show');
+  } catch (e2) {
+    showError('resetErr', e2.message);
+  }
+});
+
+const deleteModal = document.getElementById('deleteModal');
+let deleteOrgId = null;
+function openDeleteModal(id, name) {
+  deleteOrgId = id;
+  clearError('deleteErr');
+  document.getElementById('deleteForm').reset();
+  document.getElementById('del_org_name').textContent = name;
+  deleteModal.classList.add('show');
+}
+document.getElementById('del_cancel').addEventListener('click', () => deleteModal.classList.remove('show'));
+document.getElementById('deleteForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError('deleteErr');
+  try {
+    await api(`/organizations/${deleteOrgId}`, { method: 'DELETE', body: {
+      confirmName: document.getElementById('del_confirm').value,
+    }});
+    deleteModal.classList.remove('show');
+    await loadOrgs();
+  } catch (e2) {
+    showError('deleteErr', e2.message);
+  }
+});
+
+if (token()) { showDashboard(); } else { showLogin(); }
+
+// ---------- Install as an app + service worker ----------
+// Same sw.js as the hostel-facing app (it's a generic static-shell cache,
+// nothing hostel-specific in it) but its OWN manifest above, so installing
+// "Getnesty Registry" launches platform.html, not the tenant/admin app.
+// Same auto-update behavior as the main app — see common.js's comment on
+// this exact pattern for why it's needed (an installed PWA doesn't
+// self-update on its own by default).
+if ('serviceWorker' in navigator) {
+  let hasReloadedForUpdate = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hasReloadedForUpdate) return;
+    hasReloadedForUpdate = true;
+    window.location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.update();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+    }).catch(() => {});
+  });
+}
+(function () {
+  const btn = document.getElementById('installTopBtn');
+  let deferredPrompt = null;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) return;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    btn.style.display = 'inline-block';
+  });
+  btn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    btn.style.display = 'none';
+  });
+  window.addEventListener('appinstalled', () => { btn.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>

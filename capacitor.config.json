@@ -1,0 +1,12 @@
+{
+  "appId": "com.getnesty.app",
+  "appName": "Getnesty",
+  "webDir": "public",
+  "server": {
+    "url": "https://REPLACE-WITH-YOUR-PRODUCTION-URL.vercel.app",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

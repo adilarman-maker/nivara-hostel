@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>GETNESTY — My Stay</title>
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  @keyframes popIn { 0%{ transform:scale(0.5); opacity:0; } 60%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); } }
+  @keyframes pulseSoft { 0%,100%{ opacity:1; } 50%{ opacity:0.55; } }
+  .pay-success{ text-align:center; padding:28px 16px; }
+  .pay-success .circle{
+    width:64px; height:64px; border-radius:50%; background:#2f6b3f; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:2rem;
+    margin:0 auto 14px; animation:popIn 0.45s cubic-bezier(.2,1.4,.4,1);
+  }
+  .pay-success .title{ font-weight:700; font-size:1.1rem; color:var(--ink); animation:popIn 0.5s 0.1s both; }
+  .pay-pending{ display:flex; align-items:center; gap:10px; animation:pulseSoft 1.8s ease-in-out infinite; }
+  .pay-pending .dot{ width:9px; height:9px; border-radius:50%; background:#8A5A00; flex-shrink:0; }
+</style>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#1F3D2B" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+</head>
+<body style="background:var(--sand);">
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark"><img src="/icons/icon-192.png" alt="Getnesty" /></div><div class="word">Getnesty<small id="orgNameBadge" class="org-name-badge"></small></div></div>
+    <span class="role-pill">Tenant</span>
+    <div class="nav-group">
+      <div class="label">Menu</div>
+      <button class="nav-item active"><span class="gicon" data-icon="home"></span> &nbsp;My Stay</button>
+      <button class="nav-item" onclick="window.location.href='/info.html'"><span class="gicon" data-icon="clipboard"></span> &nbsp;Hostel Info</button>
+    </div>
+    <div class="sidebar-foot">
+      <div class="who" id="whoName">—</div>
+      <div class="sub">Tenant account</div>
+      <button class="btn ghost" style="padding:9px;" onclick="logout()">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="hero-card">
+      <div class="greeting">Welcome back, <span id="heroName">—</span> 🌿</div>
+      <div class="sub">Here's your current room assignment at Getnesty.</div>
+      <div id="heroKeycard"></div>
+    </div>
+
+    <div class="panel" style="padding:0; overflow:hidden;">
+      <div class="panel-head" style="padding:24px 24px 0;"><h2>📢 Announcements</h2></div>
+      <div id="messagesBoardContainer"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Stay details</h2></div>
+      <div class="info-grid" id="infoGrid"></div>
+    </div>
+
+    <div class="panel" id="paymentPanel" style="display:none;">
+      <div class="panel-head"><h2>Rent &amp; payments</h2></div>
+      <div id="paymentContent"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>My profile</h2></div>
+      <p style="font-size:0.85rem; color:#6b7a70; margin:-8px 0 16px;">These details are optional and only you (plus the hostel admins) can see or edit them.</p>
+      <form id="profileForm">
+        <div class="info-grid" style="margin-bottom:16px;">
+          <div class="field"><label>College</label><input id="pCollege" placeholder="e.g. IARE" /></div>
+          <div class="field"><label>From place</label><input id="pHometown" placeholder="e.g. Hyderabad" /></div>
+          <div class="field"><label>Parent's phone</label><input id="pParentPhone" class="mono" maxlength="10" placeholder="10-digit number" /></div>
+          <div class="field"><label>Age</label><input id="pAge" type="number" min="14" max="100" /></div>
+          <div class="field">
+            <label>Gender</label>
+            <select id="pGender" style="width:100%; padding:13px 14px; border-radius:8px; border:1.5px solid var(--line); background:var(--sand); font-family:inherit; font-size:1rem;">
+              <option value="">—</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn gold" style="width:auto; padding:12px 24px;" id="saveProfileBtn">Save profile</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Raise a complaint</h2></div>
+      <p style="font-size:0.85rem; color:#6b7a70; margin:-8px 0 14px;">Goes straight to the hostel admin, along with your room and contact details.</p>
+      <form id="complaintForm">
+        <div class="field">
+          <textarea id="complaintMessage" required rows="4" placeholder="Describe the issue…" style="width:100%; padding:13px 14px; border-radius:8px; border:1.5px solid var(--line); background:var(--sand); font-family:inherit; font-size:0.95rem; resize:vertical;"></textarea>
+        </div>
+        <button type="submit" class="btn gold" style="width:auto; padding:12px 24px;" id="submitComplaintBtn">Submit complaint</button>
+      </form>
+      <div id="complaintHistory" style="margin-top:20px;"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Need a change?</h2></div>
+      <p style="font-size:0.88rem; color:#5c6b60; margin:0;">
+        To update your phone number, switch rooms, or report an issue, contact your block's front desk or the hostel administrator —
+        only an admin can update UID / phone records for security.
+      </p>
+    </div>
+  </main>
+</div>
+
+<script src="/js/icons.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/messages.js"></script>
+<script>
+const session = guard('tenant');
+const t = session.user;
+document.getElementById('whoName').textContent = t.name;
+document.getElementById('heroName').textContent = t.name.split(' ')[0];
+document.getElementById('heroKeycard').innerHTML = renderKeycard(t.uid);
+
+const parsed = parseUidClient(t.uid);
+(async () => {
+  await loadBlockMeta();
+  initMessagesBoard('messagesBoardContainer');
+  markMessagesSeen();
+  const meta = BLOCK_META[parsed.block] || { name: `Block ${parsed.block}` };
+  document.getElementById('infoGrid').innerHTML = `
+    <div class="info-item"><div class="l">Block</div><div class="v">${meta.name}${meta.description ? ' — ' + meta.description : ''}</div></div>
+    <div class="info-item"><div class="l">Floor</div><div class="v">${parsed.floor}</div></div>
+    <div class="info-item"><div class="l">Room number</div><div class="v">${String(parsed.room).padStart(2,'0')}</div></div>
+    <div class="info-item"><div class="l">Bed</div><div class="v">${parsed.bed}</div></div>
+    <div class="info-item"><div class="l">Registered phone</div><div class="v mono">${t.phone}</div></div>
+    <div class="info-item"><div class="l">UID</div><div class="v mono">${t.uid}</div></div>
+  `;
+})();
+
+// Load the tenant's own profile fields (may have changed since login)
+(async () => {
+  try {
+    const data = await api('/tenants/me');
+    const p = data.tenant;
+    document.getElementById('pCollege').value = p.college || '';
+    document.getElementById('pHometown').value = p.hometown || '';
+    document.getElementById('pParentPhone').value = p.parentPhone || '';
+    document.getElementById('pAge').value = p.age || '';
+    document.getElementById('pGender').value = p.gender || '';
+  } catch (e) { toast(e.message, 'err'); }
+})();
+
+// ---------- Rent & payments ----------
+let _proofPollTimer = null;
+let _lastKnownProofStatus = {}; // paymentId -> status, so we can detect a transition and animate it
+
+function stopProofPolling() {
+  if (_proofPollTimer) { clearInterval(_proofPollTimer); _proofPollTimer = null; }
+}
+
+function renderOneDueCard(due, scanner, proofsForThisDue) {
+  const pendingProof = proofsForThisDue.find((p) => p.status === 'pending');
+  const rejectedProof = proofsForThisDue.find((p) => p.status === 'rejected');
+
+  const partialNote = due.status === 'partial'
+    ? `<div style="font-size:0.82rem; color:#8A5A00; margin-bottom:8px;">₹${due.amountPaid.toLocaleString('en-IN')} already paid — ₹${due.remaining.toLocaleString('en-IN')} left</div>`
+    : '';
+
+  let actionHtml;
+  if (pendingProof) {
+    actionHtml = `
+      <div class="pay-pending" style="margin-top:10px;">
+        <span class="dot"></span>
+        <div>
+          <div style="font-weight:600; color:#8A5A00;">Submitted — waiting for the hostel to confirm</div>
+          <div style="font-size:0.78rem; color:#8a9690; margin-top:2px;">You claimed ₹${pendingProof.claimedAmount.toLocaleString('en-IN')}${pendingProof.utrReference ? ' · Ref ' + pendingProof.utrReference : ''}. This updates automatically the moment it's confirmed.</div>
+        </div>
+      </div>`;
+  } else {
+    let rejectedNote = '';
+    if (rejectedProof) {
+      rejectedNote = `<div style="background:#FBEAE3; border:1px solid #E4A38A; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:0.82rem; color:#C1502E;">
+        Your last submission wasn't confirmed${rejectedProof.adminNote ? ': ' + escapeHtml(rejectedProof.adminNote) : '.'} Please try again below.
+      </div>`;
+    }
+
+    if (!scanner) {
+      actionHtml = rejectedNote + `<p style="font-size:0.85rem; color:#8A5A00;">The hostel hasn't set up a payment scanner yet — please contact the office directly to pay.</p>`;
+    } else {
+      actionHtml = rejectedNote + `
+        <div style="background:var(--sand-dim); border-radius:10px; padding:14px; margin-bottom:12px;">
+          ${scanner.qrImage ? `<img src="${scanner.qrImage}" alt="Payment QR code" style="border-radius:10px; border:1px solid var(--line); margin-bottom:10px; max-width:200px; display:block;" />` : ''}
+          <div style="font-weight:600;">${escapeHtml(scanner.accountName)}</div>
+          ${scanner.accountDetails ? `<div style="font-size:0.85rem; color:#4a544d; margin-top:2px;">${escapeHtml(scanner.accountDetails)}</div>` : ''}
+          ${scanner.contactPhone ? `<div style="font-size:0.85rem; color:#4a544d; margin-top:4px;">📞 ${escapeHtml(scanner.contactPhone)}</div>` : ''}
+        </div>
+        <form class="proofForm" data-payment-id="${due.id}" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="field" style="margin:0;"><label style="font-size:0.78rem;">Amount paid</label><input type="number" class="proof_amount" value="${due.remaining}" min="1" step="1" required /></div>
+          <div class="field" style="margin:0;"><label style="font-size:0.78rem;">UTR / reference number</label><input class="proof_utr" placeholder="From your UPI app's payment confirmation" /></div>
+          <div class="field" style="margin:0;"><label style="font-size:0.78rem;">Date &amp; time paid</label><input type="datetime-local" class="proof_date" value="${new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)}" max="${new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)}" /></div>
+          <div class="field" style="margin:0;"><label style="font-size:0.78rem;">Payment screenshot</label><input type="file" accept="image/*" class="proof_screenshot" required /></div>
+          <button type="submit" class="btn gold proofSubmitBtn" style="width:auto; padding:11px 20px; margin-top:4px;">Submit for confirmation</button>
+        </form>`;
+    }
+  }
+
+  const label = due.type === 'advance' ? `Advance payment due` : `Payment due for ${due.period}`;
+  const amountId = `dueAmt_${due.id}`;
+  return `
+    <div class="due-card" data-due-id="${due.id}">
+      <div class="due-label">⏳ ${label}</div>
+      <div class="due-amount" id="${amountId}" data-count="${due.remaining}">₹0</div>
+      ${partialNote}
+      ${actionHtml}
+    </div>`;
+}
+
+async function loadPaymentPanel() {
+  stopProofPolling(); // never stack a second interval on top of an existing one
+  const panel = document.getElementById('paymentPanel');
+  const content = document.getElementById('paymentContent');
+  try {
+    const [payData, scannerData, proofsData] = await Promise.all([
+      api('/payments/me'), api('/payments/scanner'), api('/payments/proofs/mine'),
+    ]);
+    const dues = payData.dues || [];
+    const scanner = scannerData.scanner;
+    const reminder = payData.reminder;
+    panel.style.display = 'block';
+
+    let reminderHtml = '';
+    if (dues.length > 0 && reminder) {
+      const toneColors = {
+        notice: { bg: '#EAF3EC', border: '#B7D8C3', text: '#1F3D2B' },
+        reminder: { bg: '#FFF7E6', border: '#E4CE83', text: '#8A5A00' },
+        warning: { bg: '#FBEAE3', border: '#E4A38A', text: '#C1502E' },
+      };
+      const c = toneColors[reminder.level] || toneColors.notice;
+      reminderHtml = `
+        <div style="background:${c.bg}; border:1px solid ${c.border}; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:0.85rem; font-weight:600; color:${c.text};">
+          ${reminder.label}
+        </div>`;
+    }
+
+    // A tenant can owe more than one thing at once — most commonly their
+    // advance (if brand new) AND the current month's rent. Every due gets
+    // its own card, its own scanner+form (or pending/rejected status), all
+    // independent of each other.
+    const duesHtml = dues.map((due) => {
+      const proofsForThisDue = proofsData.proofs.filter((p) => p.paymentId === due.id);
+      return renderOneDueCard(due, scanner, proofsForThisDue);
+    }).join('');
+
+    const historyHtml = payData.history.length ? `
+      <table>
+        <thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          ${payData.history.map((h) => `
+            <tr>
+              <td>${h.period}${h.type === 'advance' ? ' <span style="color:#8a9690; font-size:0.76rem;">(advance)</span>' : ''}</td>
+              <td>₹${Number(h.amount).toLocaleString('en-IN')}${h.status === 'partial' ? ` <span style="color:#8A5A00; font-size:0.78rem;">(₹${h.remaining} left)</span>` : ''}</td>
+              <td>${h.status === 'paid' ? '✅ Paid' : (h.status === 'partial' ? '🟡 Partial' : '⏳ Due')}</td>
+              <td style="color:#8a9690; font-size:0.82rem;">${h.paidAt ? new Date(h.paidAt).toLocaleString() : '—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : `<p style="font-size:0.85rem; color:#6b7a70;">No payment history yet.</p>`;
+
+    content.innerHTML = reminderHtml + duesHtml + historyHtml;
+    content.querySelectorAll('.due-amount[data-count]').forEach((el) => countUpEl(el, el.dataset.count, { prefix: '₹', duration: 650 }));
+
+    content.querySelectorAll('.proofForm').forEach((form) => {
+      form.addEventListener('submit', (e) => submitProof(e, form.dataset.paymentId, form));
+    });
+
+    // record current statuses so polling can detect a CHANGE, not just presence
+    proofsData.proofs.forEach((p) => { _lastKnownProofStatus[p.paymentId] = p.status; });
+
+    // keep polling exactly as long as there's something to wait on
+    const pendingPaymentIds = proofsData.proofs.filter((p) => p.status === 'pending').map((p) => p.paymentId);
+    if (pendingPaymentIds.length > 0) {
+      _proofPollTimer = setInterval(() => pollProofStatus(pendingPaymentIds), 6000);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function submitProof(e, paymentId, form) {
+  e.preventDefault();
+  const btn = form.querySelector('.proofSubmitBtn');
+  const fileInput = form.querySelector('.proof_screenshot');
+  const file = fileInput.files[0];
+  if (!file) { toast('Please attach a screenshot', 'err'); return; }
+  // Compared against the RAW file, but the server's limit (MAX_SCREENSHOT_BYTES
+  // in routes/payments.js) is measured on the base64-encoded STRING, which is
+  // ~33% larger than the raw file. Gating client-side on the raw size without
+  // accounting for that inflation would let a file pass here and still get
+  // rejected by the server after the tenant filled out the whole form.
+  if (file.size > 850000) { toast('That image is too large — please use a smaller screenshot (under ~850KB)', 'err'); return; }
+
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const screenshot = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    await api(`/payments/${paymentId}/submit-proof`, {
+      method: 'POST',
+      body: {
+        screenshot,
+        utrReference: form.querySelector('.proof_utr').value.trim(),
+        paidDate: form.querySelector('.proof_date').value,
+        claimedAmount: Number(form.querySelector('.proof_amount').value),
+      },
+    });
+    toast('Submitted — the hostel will confirm it shortly', 'ok');
+    loadPaymentPanel();
+  } catch (e) {
+    toast(e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Submit for confirmation';
+  }
+}
+
+// Polls just the tenant's own proof list — cheap, and it's how "the admin
+// confirms it on their screen" becomes "the tenant sees it update on
+// theirs" without either side needing a real-time connection. Checks EVERY
+// payment currently awaiting review, not just one — a tenant can have both
+// their advance and their rent pending confirmation at the same time.
+async function pollProofStatus(watchedPaymentIds) {
+  try {
+    const data = await api('/payments/proofs/mine');
+    for (const paymentId of watchedPaymentIds) {
+      const relevant = data.proofs.find((p) => p.paymentId === paymentId);
+      if (!relevant) continue;
+      const prevStatus = _lastKnownProofStatus[paymentId];
+
+      if (prevStatus === 'pending' && relevant.status === 'approved') {
+        stopProofPolling();
+        showPaymentSuccessAnimation();
+        return;
+      }
+      if (prevStatus === 'pending' && relevant.status === 'rejected') {
+        stopProofPolling();
+        loadPaymentPanel();
+        return;
+      }
+    }
+    // nothing changed yet — no-op, next tick will check again
+  } catch (e) {
+    // a transient poll failure shouldn't interrupt anything visible
+    console.error(e);
+  }
+}
+
+function showPaymentSuccessAnimation() {
+  const content = document.getElementById('paymentContent');
+  content.innerHTML = `
+    <div class="pay-success">
+      <div class="circle">✓</div>
+      <div class="title">Payment confirmed</div>
+      <div style="font-size:0.85rem; color:#6b7a70; margin-top:4px;">Updating your dues…</div>
+    </div>`;
+  setTimeout(loadPaymentPanel, 1600);
+}
+loadPaymentPanel();
+
+
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveProfileBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await api('/tenants/me', {
+      method: 'PUT',
+      body: {
+        college: document.getElementById('pCollege').value.trim(),
+        hometown: document.getElementById('pHometown').value.trim(),
+        parentPhone: document.getElementById('pParentPhone').value.trim(),
+        age: document.getElementById('pAge').value,
+        gender: document.getElementById('pGender').value,
+      },
+    });
+    toast('Profile updated', 'ok');
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save profile';
+  }
+});
+
+// ---------- Complaints ----------
+async function loadComplaintHistory() {
+  try {
+    const data = await api('/complaints/mine');
+    const holder = document.getElementById('complaintHistory');
+    if (!data.complaints.length) {
+      holder.innerHTML = `<p style="font-size:0.85rem; color:#8a9690;">No complaints raised yet.</p>`;
+      return;
+    }
+    holder.innerHTML = `
+      <div style="font-size:0.78rem; font-weight:600; color:#8a9690; margin-bottom:8px;">Your complaint history</div>
+      ${data.complaints.map((c) => `
+        <div style="background:#fff; border:1px solid var(--line); border-left:4px solid ${c.status === 'open' ? 'var(--coral)' : '#2E7D46'}; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:4px;">
+            <span style="font-size:0.76rem; color:#8a9690;">${new Date(c.createdAt).toLocaleString()}</span>
+            <span style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:${c.status === 'open' ? '#C1502E' : '#2E7D46'};">${c.status}</span>
+          </div>
+          <div style="font-size:0.88rem; white-space:pre-wrap;">${c.message.replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}</div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) { toast(e.message, 'err'); }
+}
+loadComplaintHistory();
+
+document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitComplaintBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    await api('/complaints', { method: 'POST', body: { message: document.getElementById('complaintMessage').value.trim() } });
+    toast('Complaint submitted — the admin has been notified', 'ok');
+    document.getElementById('complaintForm').reset();
+    loadComplaintHistory();
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit complaint';
+  }
+});
+</script>
+
+<!-- Mobile bottom bar — the tenant sidebar (with Log out) gets hidden on
+     phones by the same shared CSS rule that cleans up the admin console;
+     without this, there'd be no way to log out or reach Hostel Info on a
+     phone. Simple 3-item version since a tenant only has 3 destinations. -->
+<nav class="mobile-tabbar" id="mobileTabBar">
+  <button class="mtab active"><span class="ic gicon" data-icon="home"></span><span>My Stay</span></button>
+  <button class="mtab" onclick="window.location.href='/info.html'"><span class="ic gicon" data-icon="clipboard"></span><span>Hostel Info</span></button>
+  <button class="mtab" onclick="logout()"><span class="ic gicon" data-icon="logOut"></span><span>Log out</span></button>
+</nav>
+
+</body>
+</html>
